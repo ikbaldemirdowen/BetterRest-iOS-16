@@ -12,9 +12,6 @@ struct ContentView: View {
     @State private var wakeUp = defaultWakeTime
     @State private var sleepAmount = 8.0
     @State private var coffeeAmount = 1
-    @State private var alertShowing = false
-    @State private var alertTitle = ""
-    @State private var alertMessage = ""
     static var defaultWakeTime : Date
     {
         var components = DateComponents()
@@ -22,50 +19,8 @@ struct ContentView: View {
         let minutes = components.minute
         return Calendar.current.date(from: components) ?? Date.now
     }
-    var body: some View {
-        NavigationView
-        {
-            Form
-            {
-                VStack(alignment: .leading, spacing: 0)
-                {
-                    Text("When do you want to wake up?")
-                        .font(.headline)
-                    DatePicker("Please enter a time.", selection: $wakeUp, displayedComponents: .hourAndMinute)
-                        .labelsHidden()
-                }
-                VStack(alignment: .leading, spacing: 0)
-                {
-                    Text("Desired amount of sleep:")
-                        .font(.headline)
-                    Stepper("\(sleepAmount.formatted()) hours", value: $sleepAmount, in: 4...12, step: 0.25)
-                }
-                VStack(alignment: .leading, spacing: 0)
-                {
-                    Text("Daily coffee intake:")
-                    Stepper(coffeeAmount == 1 ? "1 cup" : "\(coffeeAmount) cups", value: $coffeeAmount, in: 1...12, step: 1)
-                }
-            }
-            .navigationTitle("BetterRest")
-            .toolbar
-            {
-                Button("Calculate", action: calculateBedtime)
-            }
-        }
-        .alert(alertTitle, isPresented: $alertShowing)
-        {
-            Button("OK")
-            {
-                
-            }
-        } message: {
-            Text(alertMessage)
-        }
-        
-    }
-    func calculateBedtime()
+    var sleepResults : String
     {
-        //we are creating the ML model and attach it to our ML trained model, also we are checking for errors below.
         do
         {
             let config = MLModelConfiguration()
@@ -76,20 +31,51 @@ struct ContentView: View {
             
             let prediction = try model.prediction(wake: Double(hour+minutes), estimatedSleep: sleepAmount, coffee: Double(coffeeAmount))
             let sleepTime = wakeUp - prediction.actualSleep
-            alertTitle = "Your ideal bed time is..."
-            alertMessage = sleepTime.formatted(date: .omitted, time: .shortened)
+            return "Your ideal bed time is " + sleepTime.formatted(date : .omitted, time: .shortened)
         }
         catch
         {
-            alertTitle = "Error"
-            alertMessage = "Sorry, there was a problem calculating your bed time."
+            return "There was an error."
         }
-        alertShowing = true
     }
-}
-
-struct ContentView_Previews: PreviewProvider {
-    static var previews: some View {
-        ContentView()
+    var body: some View {
+        NavigationView
+        {
+            Form
+            {
+                Section("When do you want to wake up?")
+                {
+                    DatePicker("Please enter a time.", selection: $wakeUp, displayedComponents: .hourAndMinute)
+                        .labelsHidden()
+                }
+                Section("Desired amount of sleep:")
+                {
+                    Stepper("\(sleepAmount.formatted()) hours", value: $sleepAmount, in: 4...12, step: 0.25)
+                }
+                Section("Daily coffee intake:")
+                {
+                    //                    Stepper(coffeeAmount == 1 ? "1 cup" : "\(coffeeAmount) cups", value: $coffeeAmount, in: 1...12, step: 1)
+                    Picker("Number of cups", selection: $coffeeAmount)
+                    {
+                        ForEach(0..<13)
+                        {
+                            Text("\($0)")
+                        }
+                    }
+                }
+                Section
+                {
+                    Text(sleepResults)
+                        .font(.headline)
+                }
+            }
+            .navigationTitle("BetterRest")
+        }
+    }
+    
+    struct ContentView_Previews: PreviewProvider {
+        static var previews: some View {
+            ContentView()
+        }
     }
 }
